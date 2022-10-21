@@ -3,23 +3,36 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TaleWorlds.CampaignSystem.Clan;
 using HarmonyLib;
+using TaleWorlds.CampaignSystem;
+using TaleWorlds.CampaignSystem.CharacterDevelopment;
+using TaleWorlds.CampaignSystem.Party.PartyComponents;
+using TaleWorlds.CampaignSystem.Settlements;
 
 namespace PartyStrengthOnly
 {
-    [HarmonyPatch(typeof(Clan), nameof(UpdateStrength))]
+
+    [HarmonyPatch(typeof(Clan), "UpdateStrength")]
     internal class ClanUpdateStrengthPatch
     {
-        static bool Prefix()
-        {
-            this.TotalStrength = 0f;
-            foreach (WarPartyComponent warPartyComponent in this._warPartyComponentsCache)
-            {
-                this.TotalStrength += warPartyComponent.MobileParty.Party.TotalStrength;
-            }
 
-            return false;
+        static AccessTools.FieldRef<Clan, float> totalStrength = AccessTools.FieldRefAccess<Clan, float>("<TotalStrength>k__BackingField");
+
+        static void Postfix(Clan __instance)
+        {
+                float fiefStrength = 0f;
+
+                foreach (Town town in __instance.Fiefs)
+                {
+                    if (town.GarrisonParty != null)
+                    {
+                        fiefStrength += town.GarrisonParty.Party.TotalStrength;
+                    }
+                }
+
+                float expectedStrength = __instance.TotalStrength - fiefStrength;
+
+                totalStrength(__instance) = expectedStrength;
         }
     }
 }
